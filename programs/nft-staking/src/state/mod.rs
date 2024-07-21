@@ -1,5 +1,7 @@
-pub mod stake;
-pub mod user;
+pub mod stake_config;
+pub mod stake_account;
+pub mod user_account;
 
-pub use stake::*;
-pub use user::*;
+pub use stake_config::*;
+pub use stake_account::*;
+pub use user_account::*;
