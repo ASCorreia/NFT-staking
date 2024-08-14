@@ -35,17 +35,17 @@ pub struct Unstake<'info> {
         bump,
     )]
     pub edition: Account<'info, MasterEditionAccount>,
+    pub config: Account<'info, StakeConfig>,
     #[account(
         mut,
         close = user,
-        seeds = [b"stake".as_ref(), mint.key().as_ref()],
+        seeds = [b"stake".as_ref(), mint.key().as_ref(), config.key().as_ref()],
         bump,
     )]
-    pub config: Account<'info, StakeConfig>,
     pub stake_account: Account<'info, StakeAccount>,
     #[account(
         mut,
-        seeds = [b"user".as_ref(), user.key().as_ref(), config.key().as_ref()],
+        seeds = [b"user".as_ref(), user.key().as_ref()],
         bump = user_account.bump,
     )]
     pub user_account: Account<'info, UserAccount>,
@@ -63,6 +63,14 @@ impl<'info> Unstake<'info> {
 
         self.user_account.points += time_elapsed as u32 * self.config.points_per_stake as u32;
 
+        let seeds = &[
+            b"stake",
+            self.mint.to_account_info().key.as_ref(),
+            self.config.to_account_info().key.as_ref(),
+            &[self.stake_account.bump]
+        ];     
+        let signer_seeds = &[&seeds[..]];
+
         let delegate = &self.stake_account.to_account_info();
         let token_account = &self.mint_ata.to_account_info();
         let edition = &self.edition.to_account_info();
@@ -79,13 +87,13 @@ impl<'info> Unstake<'info> {
                 mint,
                 token_program,
             }
-        );
+        ).invoke_signed(signer_seeds)?;
 
         let cpi_program = self.token_program.to_account_info();
 
         let cpi_accounts = Revoke {
             source: self.mint_ata.to_account_info(),
-            authority: self.stake_account.to_account_info(),
+            authority: self.user.to_account_info(),
         };
 
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);

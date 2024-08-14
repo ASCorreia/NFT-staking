@@ -1,11 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { createNft, findMasterEditionPda, findMetadataPda, mplTokenMetadata, verifyCollection, verifySizedCollectionItem } from '@metaplex-foundation/mpl-token-metadata'
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
-import { KeypairSigner, createSignerFromKeypair, generateSigner, keypairIdentity, percentAmount } from '@metaplex-foundation/umi';
+import { KeypairSigner, PublicKey, createSignerFromKeypair, generateSigner, keypairIdentity, percentAmount } from '@metaplex-foundation/umi';
 import { Program } from "@coral-xyz/anchor";
 import { NftStaking } from "../target/types/nft_staking";
-import { TOKEN_PROGRAM_ID, associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint, getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
+import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 
 describe("nft-staking", () => {
   // Configure the client to use the local cluster.
@@ -21,6 +22,8 @@ describe("nft-staking", () => {
   let nftMint: KeypairSigner;
   let collectionMint: KeypairSigner;
 
+  let stakeAccount: anchor.web3.PublicKey;
+
   const creatorWallet = umi.eddsa.createKeypairFromSecretKey(new Uint8Array(payer.payer.secretKey));
   const creator = createSignerFromKeypair(umi, creatorWallet);
   umi.use(keypairIdentity(creator));
@@ -32,7 +35,7 @@ describe("nft-staking", () => {
 
   const userAccount = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("user"), provider.publicKey.toBuffer()], program.programId)[0];
 
-  const stakeAccount = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("stake"), provider.publicKey.toBuffer()], program.programId)[0];
+  stakeAccount = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("stake"), provider.publicKey.toBuffer()], program.programId)[0];
   it("Mint Collection NFT", async () => {
     collectionMint = generateSigner(umi);
         await createNft(umi, {
@@ -105,10 +108,16 @@ describe("nft-staking", () => {
   });
 
   it("Stake NFT", async() => {
-    const mintAta = associatedAddress({mint: new anchor.web3.PublicKey(nftMint.publicKey.toString()), owner: provider.wallet.publicKey});
+    const mintAta = getAssociatedTokenAddressSync(new anchor.web3.PublicKey(nftMint.publicKey as PublicKey), provider.wallet.publicKey);
 
     const nftMetadata = findMetadataPda(umi, {mint: nftMint.publicKey});
     const nftEdition = findMasterEditionPda(umi, {mint: nftMint.publicKey});
+
+    stakeAccount = anchor.web3.PublicKey.findProgramAddressSync([
+      Buffer.from("stake"), 
+      new anchor.web3.PublicKey(nftMint.publicKey as PublicKey).toBuffer(),
+      config.toBuffer()
+    ], program.programId)[0];
 
     const tx = await program.methods.stake()
     .accountsPartial({
@@ -116,12 +125,64 @@ describe("nft-staking", () => {
       mint: nftMint.publicKey,
       collection: collectionMint.publicKey,
       mintAta,
-      metadata: new anchor.web3.PublicKey(nftMetadata.toString()),
-      edition: new anchor.web3.PublicKey(nftEdition.toString()),
+      metadata: new anchor.web3.PublicKey(nftMetadata[0]),
+      edition: new anchor.web3.PublicKey(nftEdition[0]),
       config,
       stakeAccount,
       userAccount,
     })
     .rpc();
+
+    console.log("\nNFT Staked!");
+    console.log("Your transaction signature", tx);
+  })
+
+  it("Unstake NFT", async() => {
+    const mintAta = getAssociatedTokenAddressSync(new anchor.web3.PublicKey(nftMint.publicKey as PublicKey), provider.wallet.publicKey);
+
+    const nftMetadata = findMetadataPda(umi, {mint: nftMint.publicKey});
+    const nftEdition = findMasterEditionPda(umi, {mint: nftMint.publicKey});
+
+    stakeAccount = anchor.web3.PublicKey.findProgramAddressSync([
+      Buffer.from("stake"), 
+      new anchor.web3.PublicKey(nftMint.publicKey as PublicKey).toBuffer(),
+      config.toBuffer()
+    ], program.programId)[0];
+
+    const tx = await program.methods.unstake()
+    .accountsPartial({
+      user: provider.wallet.publicKey,
+      mint: nftMint.publicKey,
+      mintAta,
+      metadata: new anchor.web3.PublicKey(nftMetadata[0]),
+      edition: new anchor.web3.PublicKey(nftEdition[0]),
+      config,
+      stakeAccount,
+      userAccount,
+    })
+    .rpc();
+
+    console.log("\nNFT unstaked!");
+    console.log("Your transaction signature", tx);
+  })
+
+  it("Claim Rewards", async() => {
+    const rewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey);
+
+    const tx = await program.methods.claim()
+    .accountsPartial({
+      user: provider.wallet.publicKey,
+      userAccount,
+      rewardsMint,
+      config,
+      rewardsAta,
+      systemProgram: SYSTEM_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    })
+    .rpc();
+
+    console.log("\nRewards claimed");
+    console.log("Your transaction signature", tx);
   })
 });

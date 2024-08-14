@@ -61,6 +61,13 @@ pub struct Stake<'info> {
 impl<'info> Stake<'info> {
     pub fn stake(&mut self, bumps: &StakeBumps) -> Result<()> {
 
+        self.stake_account.set_inner(StakeAccount {
+            owner: self.user.key(),
+            mint: self.mint.key(),
+            last_update: Clock::get()?.unix_timestamp,
+            bump: bumps.stake_account,
+        });
+
         let cpi_program = self.token_program.to_account_info();
 
         let cpi_accounts = Approve {
@@ -72,6 +79,14 @@ impl<'info> Stake<'info> {
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         
         approve(cpi_ctx, 1)?;
+
+        let seeds = &[
+            b"stake",
+            self.mint.to_account_info().key.as_ref(),
+            self.config.to_account_info().key.as_ref(),
+            &[self.stake_account.bump]
+        ];     
+        let signer_seeds = &[&seeds[..]];
 
         let delegate = &self.stake_account.to_account_info();
         let token_account = &self.mint_ata.to_account_info();
@@ -89,14 +104,7 @@ impl<'info> Stake<'info> {
                 mint,
                 token_program,
             },
-        ).invoke()?;
-
-        self.stake_account.set_inner(StakeAccount {
-            owner: self.user.key(),
-            mint: self.mint.key(),
-            last_update: Clock::get()?.unix_timestamp,
-            bump: bumps.stake_account,
-        });
+        ).invoke_signed(signer_seeds)?;
 
         //require!(self.user_account.amount_staked < self.config.max_stake, "Max stake reached");
         self.user_account.amount_staked += 1;
