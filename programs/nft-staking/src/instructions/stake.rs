@@ -1,14 +1,31 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{metadata::{mpl_token_metadata::instructions::{FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts}, MasterEditionAccount, Metadata, MetadataAccount}, token::{approve, Approve, Mint, Token, TokenAccount}};
+use anchor_spl::{
+    metadata::{
+        mpl_token_metadata::instructions::{
+            FreezeDelegatedAccountCpi, 
+            FreezeDelegatedAccountCpiAccounts
+        }, 
+        MasterEditionAccount, 
+        Metadata, 
+        MetadataAccount
+    }, 
+    token::{
+        approve, 
+        Approve, 
+        Mint, 
+        Token, 
+        TokenAccount
+    }
+};
 
-use crate::state::{StakeAccount, StakeConfig, UserAccount};
+use crate::{errors::StakeError, state::{StakeAccount, StakeConfig, UserAccount}};
 
 #[derive(Accounts)]
 pub struct Stake<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
     pub mint: Account<'info, Mint>,
-    pub collection: Account<'info, Mint>,
+    pub collection_mint: Account<'info, Mint>,
     #[account(
         mut,
         associated_token::mint = mint,
@@ -23,7 +40,7 @@ pub struct Stake<'info> {
         ],
         seeds::program = metadata_program.key(),
         bump,
-        constraint = metadata.collection.as_ref().unwrap().key.as_ref() == collection.key().as_ref(),
+        constraint = metadata.collection.as_ref().unwrap().key.as_ref() == collection_mint.key().as_ref(),
         constraint = metadata.collection.as_ref().unwrap().verified == true,
     )]
     pub metadata: Account<'info, MetadataAccount>,
@@ -38,6 +55,10 @@ pub struct Stake<'info> {
         bump,
     )]
     pub edition: Account<'info, MasterEditionAccount>,
+    #[account(
+        seeds = [b"config".as_ref(), collection_mint.key().as_ref()],
+        bump = config.bump,
+    )]
     pub config: Account<'info, StakeConfig>,
     #[account(
         init,
@@ -61,9 +82,12 @@ pub struct Stake<'info> {
 impl<'info> Stake<'info> {
     pub fn stake(&mut self, bumps: &StakeBumps) -> Result<()> {
 
+        require!(self.user_account.amount_staked < self.config.max_stake, StakeError::MaxStakeReached);
+
         self.stake_account.set_inner(StakeAccount {
             owner: self.user.key(),
             mint: self.mint.key(),
+            collection: self.collection_mint.key(),
             last_update: Clock::get()?.unix_timestamp,
             bump: bumps.stake_account,
         });
@@ -106,7 +130,6 @@ impl<'info> Stake<'info> {
             },
         ).invoke_signed(signer_seeds)?;
 
-        //require!(self.user_account.amount_staked < self.config.max_stake, "Max stake reached");
         self.user_account.amount_staked += 1;
 
         Ok(())
