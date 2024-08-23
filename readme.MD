@@ -87,8 +87,6 @@ pub struct StakeAccount {
 
 - mint: To address of the NFT staked.
 
-- collection: The collection of the staked NFT.
-
 - staked_at: The time the NFT was staked.
 
 - bump: Since our Stake account will be a PDA, we will store the bump of the account.
@@ -280,11 +278,11 @@ In this context, we are passing all the accounts needed for a user to stake his 
 
 - collection_mint: the Collection NFT to which the NFT being staked belongs to.
 
-- metadata: The metadata account of the NFT. 
+- metadata: The Metadata account of the NFT. 
 In here, we check that the this metadata account belongs to the NFT being staked.
 We also check that the NFT belongs to the correct collection and that is verified as part of that collection.
 
-- edition: The master_edition account of the NFT.
+- edition: The Master Edition account of the NFT.
 
 - config: The Stake Config account being used to stake this NFT.
 
@@ -417,7 +415,7 @@ In this context, we are passing all the accounts needed for a contributor to uns
 
 - mint_ata: The user ATA where the NFT is frozen.
 
-- edition: The NFT master edition account.
+- edition: The NFT Master Edition account.
 
 - config: An initialized Stake Config account that will ne used to perform checks and award points.
 
@@ -542,7 +540,7 @@ In this context, we are passing all the accounts needed for a contributor to uns
 
 - rewards_mint: The rewards mint that we will be minting to the user.
 
-- config: The config account that has authority over the rewards mint.
+- config: The Config account that has authority over the rewards mint.
 
 - rewards_ata: The user rewards ATA (associated token account). If it doesn't exist we will initialize it and the user will pay for the initialization fees.
 
