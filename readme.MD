@@ -20,14 +20,11 @@ A User account consists of:
 
 ```rust
 #[account]
+#[derive(InitSpace)]
 pub struct UserAccount {
     pub points: u32,
     pub amount_staked: u8,
     pub bump: u8,
-}
-
-impl Space for UserAccount {
-    const INIT_SPACE: usize = 8 + 4 + 1 + 1;
 }
 ```
 
@@ -47,16 +44,13 @@ A Stake Config account consists of:
 
 ```rust
 #[account]
+#[derive(InitSpace)]
 pub struct StakeConfig {
     pub points_per_stake: u8,
     pub max_stake: u8,
     pub freeze_period: u32,
     pub rewards_bump: u8,
     pub bump: u8,
-}
-
-impl Space for StakeConfig {
-    const INIT_SPACE: usize = 8 + 1 + 1 + 4 + 1 + 1;
 }
 ```
 
@@ -78,15 +72,12 @@ A Stake account consists of:
 
 ```rust
 #[account]
+#[derive(InitSpace)]
 pub struct StakeAccount {
     pub owner: Pubkey,
     pub mint: Pubkey,
     pub staked_at: i64,
     pub bump: u8,
-}
-
-impl Space for StakeAccount {
-    const INIT_SPACE: usize = 8 + 32 + 32 + 32 + 8 + 1;
 }
 ```
 
