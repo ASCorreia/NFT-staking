@@ -10,9 +10,9 @@ In this example, a user will be able to stake a NFT of a certain collection, get
 
 For this program, we will have 3 state accounts:
 
-- A User account:
+- A User account
 
-- A Stake Config account:
+- A Stake Config account
 
 - A Stake account
 
@@ -33,13 +33,13 @@ impl Space for UserAccount {
 
 ### In this state account, we will store:
 
-- points: the current points that the user has
+- points: The current points that the user has.
 
-- amount_staked: to number of NFTs that the user has currently staked
+- amount_staked: The number of NFTs that the user has currently staked.
 
-- bump: since our User account will be a PDA (Program Derived Address), we will store the bump of the account
+- bump: Since our User account will be a PDA (Program Derived Address), we will store the bump of the account.
 
-We use InitSpace derive macro to implement the space triat that will calculate the amount of space that our account will use on-chain (without taking the anchor discriminator into consideration)
+We use InitSpace derive macro to implement the space triat that will calculate the amount of space that our account will use on-chain (without taking the anchor discriminator into consideration).
 
 ---
 
@@ -62,15 +62,15 @@ impl Space for StakeConfig {
 
 ### In this state account, we will store:
 
-- points_per_stake: the points that the user will receive per stake
+- points_per_stake: The points that the user will receive per stake.
 
-- freeze_period: to time that the NFT need to be staked before being unstaked
+- freeze_period: The time that the NFT need to be staked before being unstaked.
 
-- rewards_bump: we will be initializing a rewards mint based on a PDA (Program Derived Address), so we will store that PDA bump
+- rewards_bump: We will be initializing a rewards mint based on a PDA (Program Derived Address), so we will store that PDA bump.
 
-- bump: since our Stake Config account will be a PDA, we will store the bump of the account
+- bump: Since our Stake Config account will be a PDA, we will store the bump of the account.
 
-Again, we use InitSpace derive macro to implement the space triat that will calculate the amount of space that our account will use on-chain (without taking the anchor discriminator into consideration)
+Again, we use InitSpace derive macro to implement the space triat that will calculate the amount of space that our account will use on-chain (without taking the anchor discriminator into consideration).
 
 ---
 
@@ -92,17 +92,17 @@ impl Space for StakeAccount {
 
 ### In this state account, we will store:
 
-- owner: the owner of this stake account
+- owner: The owner of this stake account.
 
-- mint: to addrss of the NFT staked
+- mint: To address of the NFT staked.
 
-- collection: the collection of the staked NFT
+- collection: The collection of the staked NFT.
 
-- staked_at: the time the NFT was staked
+- staked_at: The time the NFT was staked.
 
-- bump: since our Stake account will be a PDA, we will store the bump of the account
+- bump: Since our Stake account will be a PDA, we will store the bump of the account.
 
-Again, we use InitSpace derive macro to implement the space triat that will calculate the amount of space that our account will use on-chain (without taking the anchor discriminator into consideration)
+Again, we use InitSpace derive macro to implement the space triat that will calculate the amount of space that our account will use on-chain (without taking the anchor discriminator into consideration).
 
 ---
 
@@ -127,12 +127,12 @@ pub struct Initialize<'info> {
 
 Let´s have a closer look at the accounts that we are passing in this context:
 
-- user: will be the person starting the user account. He will be a signer of the transaction, and we mark his account as mutable as we will be deducting lamports from this account
+- user: Will be the person starting the user account. He will be a signer of the transaction, and we mark his account as mutable as we will be deducting lamports from this account.
 
-- user_account: will be the state account that we will initialize and the user will be paying for the initialization of the account.
-We derive the User PDA from the byte representation of the word "user" and the reference of the user publick key. Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct
+- user_account: Will be the state account that we will initialize and the user will be paying for the initialization of the account.
+We derive the User PDA from the byte representation of the word "user" and the reference of the user publick key. Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct.
 
-- system_program: Program resposible for the initialization of any new account
+- system_program: Program resposible for the initialization of any new account.
 
 ### We then implement some functionality for our Initialize context:
 
@@ -151,7 +151,7 @@ impl<'info> Initialize<'info> {
 }
 ```
 
-In here, we basically just set the initial data of our User account
+In here, we basically just set the initial data of our User account.
 
 ---
 
@@ -186,16 +186,16 @@ pub struct InitializeConfig<'info> {
 
 In this context, we are passing all the accounts needed to contribute to a fundraising campaign:
 
-- Admin: the address of the platform admin. He will be a signer of the transaction, and we mark his account as mutable as we will be deducting lamports from this account
+- Admin: The address of the platform admin. He will be a signer of the transaction, and we mark his account as mutable as we will be deducting lamports from this account.
 
-- config: will be the state account that we will initialize and the admin will be paying for the initialization of the account.
-We derive the User PDA from the byte representation of the word "config". Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct
+- config: Will be the state account that we will initialize and the admin will be paying for the initialization of the account.
+We derive the User PDA from the byte representation of the word "config". Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct.
 
-- rewards_mint: We initialize a rewards mint account that will be used to mint rewards to the user. We initialize it with 6 decimals, and the authority of that mint account will be the config account (so that our program can mint tokens)
+- rewards_mint: We initialize a rewards mint account that will be used to mint rewards to the user. We initialize it with 6 decimals, and the authority of that mint account will be the config account (so that our program can mint tokens).
 
-- system_program: Program resposible for the initialization of any new account
+- system_program: Program resposible for the initialization of any new account.
 
-- token_program: We are initializing a Mint account
+- token_program: We are initializing a Mint account.
 
 ### We then implement some functionality for our Initialize Config context:
 
@@ -214,7 +214,7 @@ impl<'info> InitializeConfig<'info> {
     }
 }
 ```
-In here, we basically just set the initial data of our Stake Config account
+In here, we basically just set the initial data of our Stake Config account.
 
 ---
 
@@ -298,7 +298,7 @@ We also check that the NFT belongs to the correct collection and that is verifie
 - config: The Stake Config account being used to stake this NFT.
 
 - stake_account: will be the state account that we will initialize and the user will be paying for the initialization of the account.
-We derive the User PDA from the byte representation of the word "stake", the reference of the NFT address and the reference of the Config account address. Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct
+We derive the User PDA from the byte representation of the word "stake", the reference of the NFT address and the reference of the Config account address. Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct.
 
 ### We then implement some functionality for our Stake context:
 
@@ -420,15 +420,15 @@ pub struct Unstake<'info> {
 
 In this context, we are passing all the accounts needed for a contributor to unstake his NFT:
 
-- user: The address of the user that wants to unstake the NFT
+- user: The address of the user that wants to unstake the NFT.
 
 - mint: The NFT being unstaked.
 
-- mint_ata: The user ATA where the NFT is frozen
+- mint_ata: The user ATA where the NFT is frozen.
 
-- edition: The NFT master edition account
+- edition: The NFT master edition account.
 
-- config: An initialized Stake Config account that will ne used to perform checks and award points
+- config: An initialized Stake Config account that will ne used to perform checks and award points.
 
 - stake_account: The NFT Stake Account. We will be closing this account and sending the rent back to the user.
 
@@ -438,7 +438,7 @@ In this context, we are passing all the accounts needed for a contributor to uns
 
 - token_program: We will performing CPIs (Cross Program Invocations) to the token program to revoke authority over the NFT.
 
-- metadata_program: We will be performing CPIs to the token metadata program to thaw / unfreeze the NFT
+- metadata_program: We will be performing CPIs to the token metadata program to thaw / unfreeze the NFT.
 
 ### We then implement some functionality for our Unstake context:
 
@@ -502,7 +502,7 @@ After that, we will update the user points based on the time stsked and the poin
 
 We then thaw the delegated account and revoke authority over the NFT.
 
-Finally, we update the total amount staked in the User account
+Finally, we update the total amount staked in the User account.
 
 ---
 
@@ -545,7 +545,7 @@ pub struct Claim<'info> {
 
 In this context, we are passing all the accounts needed for a contributor to unstake his NFT:
 
-- user: The user claiming the rewards. We mark it as mutabçe has it might need to pay for initialization fees
+- user: The user claiming the rewards. We mark it as mutabçe has it might need to pay for initialization fees.
 
 - user_account: The User account, derived from the user public key.
 
@@ -553,7 +553,7 @@ In this context, we are passing all the accounts needed for a contributor to uns
 
 - config: The config account that has authority over the rewards mint.
 
-- rewards_ata: The user rewards ATA (associated token account). If it doesn't exist we will initialize it and the user will pay for the initialization fees
+- rewards_ata: The user rewards ATA (associated token account). If it doesn't exist we will initialize it and the user will pay for the initialization fees.
 
 - system_program: The program responsible for initializating any account.
 
