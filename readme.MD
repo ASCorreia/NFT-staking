@@ -1,4 +1,4 @@
-# Token Fundraiser
+# NFT Staking
 
 This example demonstrates how to stake a NFT using the Token Metadata Program.
 
