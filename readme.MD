@@ -81,8 +81,7 @@ A Stake account consists of:
 pub struct StakeAccount {
     pub owner: Pubkey,
     pub mint: Pubkey,
-    pub collection: Pubkey,
-    pub last_update: i64,
+    pub staked_at: i64,
     pub bump: u8,
 }
 
@@ -99,7 +98,7 @@ impl Space for StakeAccount {
 
 - collection: the collection of the staked NFT
 
-- last_update: the time the NFT was staked
+- staked_at: the time the NFT was staked
 
 - bump: since our Stake account will be a PDA, we will store the bump of the account
 
@@ -119,7 +118,7 @@ pub struct Initialize<'info> {
         payer = user,
         seeds = [b"user".as_ref(), user.key().as_ref()],
         bump,
-        space = UserAccount::INIT_SPACE,
+        space = 8 + UserAccount::INIT_SPACE,
     )]
     pub user_account: Account<'info, UserAccount>,
     pub system_program: Program<'info, System>,
@@ -166,14 +165,13 @@ pub struct InitializeConfig<'info> {
     #[account(
         init, 
         payer = admin,
-        seeds = [b"config".as_ref(), collection_mint.key().as_ref()],
+        seeds = [b"config".as_ref()],
         bump,
-        space = StakeConfig::INIT_SPACE,
+        space = 8 + StakeConfig::INIT_SPACE,
     )]
     pub config: Account<'info, StakeConfig>,
-    pub collection_mint: Account<'info, Mint>,
     #[account(
-        init,
+        init_if_needed,
         payer = admin,
         seeds = [b"rewards".as_ref(), config.key().as_ref()],
         bump,
@@ -190,10 +188,8 @@ In this context, we are passing all the accounts needed to contribute to a fundr
 
 - Admin: the address of the platform admin. He will be a signer of the transaction, and we mark his account as mutable as we will be deducting lamports from this account
 
-- collection_mint: the address of the collection NFT that is targeted for this config
-
 - config: will be the state account that we will initialize and the admin will be paying for the initialization of the account.
-We derive the User PDA from the byte representation of the word "config" and the reference of the collection NFT address. Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct
+We derive the User PDA from the byte representation of the word "config". Anchor will calculate the canonical bump (the first bump that throws that address out of the ed25519 eliptic curve) and save it for us in a struct
 
 - rewards_mint: We initialize a rewards mint account that will be used to mint rewards to the user. We initialize it with 6 decimals, and the authority of that mint account will be the config account (so that our program can mint tokens)
 
@@ -261,14 +257,14 @@ pub struct Stake<'info> {
     )]
     pub edition: Account<'info, MasterEditionAccount>,
     #[account(
-        seeds = [b"config".as_ref(), collection_mint.key().as_ref()],
+        seeds = [b"config".as_ref()],
         bump = config.bump,
     )]
     pub config: Account<'info, StakeConfig>,
     #[account(
         init,
         payer = user,
-        space = StakeAccount::INIT_SPACE,
+        space = 8 + StakeAccount::INIT_SPACE,
         seeds = [b"stake".as_ref(), mint.key().as_ref(), config.key().as_ref()],
         bump,
     )]
@@ -316,7 +312,7 @@ impl<'info> Stake<'info> {
             owner: self.user.key(),
             mint: self.mint.key(),
             collection: self.collection_mint.key(),
-            last_update: Clock::get()?.unix_timestamp,
+            staked_at: Clock::get()?.unix_timestamp,
             bump: bumps.stake_account,
         });
 
@@ -365,7 +361,7 @@ impl<'info> Stake<'info> {
 }
 ```
 
-In this implementation, we start by setting the initial state of the Stake account.
+In this implementation, we start by setting the initial state of the Stake account and checking if the total amount staked by the user is within limits.
 
 After that, we delegate authority over the NFT to the stake account and freeze the NFT in the user's wallet.
 
@@ -398,6 +394,10 @@ pub struct Unstake<'info> {
         bump,
     )]
     pub edition: Account<'info, MasterEditionAccount>,
+    #[account(
+        seeds = [b"config".as_ref()],
+        bump = config.bump,
+    )]
     pub config: Account<'info, StakeConfig>,
     #[account(
         mut,
@@ -446,7 +446,7 @@ In this context, we are passing all the accounts needed for a contributor to uns
 impl<'info> Unstake<'info> {
     pub fn unstake(&mut self) -> Result<()> {
 
-        let time_elapsed = ((Clock::get()?.unix_timestamp - self.stake_account.last_update) / 86400) as u32;
+        let time_elapsed = ((Clock::get()?.unix_timestamp - self.stake_account.staked_at) / 86400) as u32;
 
         require!(time_elapsed >= self.config.freeze_period, StakeError::FreezePeriodNotPassed);
 
@@ -513,7 +513,6 @@ Finally, we update the total amount staked in the User account
 pub struct Claim<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    pub collection_mint: Account<'info, Mint>,
     #[account(
         mut,
         seeds = [b"user".as_ref(), user.key().as_ref()],
@@ -527,7 +526,7 @@ pub struct Claim<'info> {
     )]
     pub rewards_mint: Account<'info, Mint>,
     #[account(
-        seeds = [b"config".as_ref(), collection_mint.key().as_ref()],
+        seeds = [b"config".as_ref()],
         bump = config.bump,
     )]
     pub config: Account<'info, StakeConfig>,
@@ -545,6 +544,22 @@ pub struct Claim<'info> {
 ```
 
 In this context, we are passing all the accounts needed for a contributor to unstake his NFT:
+
+- user: The user claiming the rewards. We mark it as mutabçe has it might need to pay for initialization fees
+
+- user_account: The User account, derived from the user public key.
+
+- rewards_mint: The rewards mint that we will be minting to the user.
+
+- config: The config account that has authority over the rewards mint.
+
+- rewards_ata: The user rewards ATA (associated token account). If it doesn't exist we will initialize it and the user will pay for the initialization fees
+
+- system_program: The program responsible for initializating any account.
+
+- token_program: We will be transfering SPL Tokens.
+
+- associated_token_program: We might need to initialize an ATA (associated token account).
 
 ### We then implement some functionality for our Claim context:
 
@@ -578,6 +593,6 @@ impl<'info> Claim<'info> {
 }
 ```
 
-In here, we will mint the rewards to the user.
+In here, we will mint the rewards to the user ATA.
 
-Finally, we reset his total points to 0.
+Finally, we reset his total points back to 0.
